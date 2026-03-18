@@ -5,6 +5,23 @@ use git2::{Cred, Oid, PushOptions, RemoteCallbacks, Repository, Signature};
 use crate::error::AppError;
 use crate::models::CommitInfo;
 
+/// Convert a title to a safe filename. Japanese/Unicode is kept as-is.
+pub fn title_to_filename(title: &str) -> String {
+    let sanitized: String = title
+        .chars()
+        .map(|c| match c {
+            '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' | '\0' => '_',
+            _ => c,
+        })
+        .collect();
+    let trimmed = sanitized.trim().trim_matches('.');
+    if trimmed.is_empty() {
+        "untitled".to_string()
+    } else {
+        format!("{trimmed}.md")
+    }
+}
+
 /// Initialize a bare Git repository at the given path.
 pub fn init_repo(path: &Path) -> Result<Repository, AppError> {
     if path.exists() {
@@ -33,6 +50,7 @@ fn build_markdown(id: &str, title: &str, tags: &[String], icon: &str, content: &
 }
 
 /// Write a page to the repo and create a commit. Returns the commit OID.
+/// If old_filename is provided and differs from new filename, the old file is removed (rename).
 pub fn write_page(
     repo: &Repository,
     page_id: &str,
@@ -41,11 +59,12 @@ pub fn write_page(
     icon: &str,
     content: &str,
     message: &str,
+    old_filename: Option<&str>,
 ) -> Result<Oid, AppError> {
     let markdown = build_markdown(page_id, title, tags, icon, content);
     let blob_oid = repo.blob(markdown.as_bytes())?;
 
-    let filename = format!("{page_id}.md");
+    let filename = title_to_filename(title);
     let sig = Signature::now("GitNote", "gitnote@localhost")?;
 
     // Build tree: get existing tree from HEAD (if any), add/update our file
@@ -55,6 +74,13 @@ pub fn write_page(
     } else {
         repo.treebuilder(None)?
     };
+
+    // Remove old file if renamed
+    if let Some(old) = old_filename {
+        if old != filename {
+            let _ = tree_builder.remove(old);
+        }
+    }
 
     tree_builder.insert(&filename, blob_oid, 0o100644)?;
     let tree_oid = tree_builder.write()?;
@@ -69,15 +95,14 @@ pub fn write_page(
 }
 
 /// Read a page's raw content from the HEAD tree.
-pub fn read_page(repo: &Repository, page_id: &str) -> Result<Option<String>, AppError> {
+pub fn read_page(repo: &Repository, filename: &str) -> Result<Option<String>, AppError> {
     let head = match repo.head() {
         Ok(h) => h,
         Err(_) => return Ok(None),
     };
     let tree = head.peel_to_commit()?.tree()?;
-    let filename = format!("{page_id}.md");
 
-    match tree.get_name(&filename) {
+    match tree.get_name(filename) {
         Some(entry) => {
             let blob = repo.find_blob(entry.id())?;
             let content = std::str::from_utf8(blob.content())
@@ -89,14 +114,13 @@ pub fn read_page(repo: &Repository, page_id: &str) -> Result<Option<String>, App
 }
 
 /// Delete a page from the repo tree and create a commit.
-pub fn delete_page(repo: &Repository, page_id: &str, title: &str) -> Result<Oid, AppError> {
+pub fn delete_page(repo: &Repository, filename: &str, title: &str) -> Result<Oid, AppError> {
     let head = repo.head()?;
     let parent_commit = head.peel_to_commit()?;
     let tree = parent_commit.tree()?;
 
-    let filename = format!("{page_id}.md");
     let mut tree_builder = repo.treebuilder(Some(&tree))?;
-    tree_builder.remove(&filename)?;
+    tree_builder.remove(filename)?;
     let tree_oid = tree_builder.write()?;
     let new_tree = repo.find_tree(tree_oid)?;
 
@@ -117,7 +141,7 @@ pub fn delete_page(repo: &Repository, page_id: &str, title: &str) -> Result<Oid,
 /// Get the commit history for a specific page.
 pub fn page_history(
     repo: &Repository,
-    page_id: &str,
+    filename: &str,
     limit: usize,
 ) -> Result<Vec<CommitInfo>, AppError> {
     let head = match repo.head() {
@@ -129,8 +153,6 @@ pub fn page_history(
     let mut revwalk = repo.revwalk()?;
     revwalk.push(head_commit.id())?;
     revwalk.set_sorting(git2::Sort::TIME)?;
-
-    let filename = format!("{page_id}.md");
     let mut commits = Vec::new();
 
     for oid_result in revwalk {
@@ -155,8 +177,8 @@ pub fn page_history(
         if has_file != parent_has_file || (has_file && parent_has_file) {
             // For modified case, check if blob changed
             if has_file && parent_has_file {
-                let blob_id = tree.get_name(&filename).unwrap().id();
-                let parent_blob_id = commit.parent(0)?.tree()?.get_name(&filename).unwrap().id();
+                let blob_id = tree.get_name(filename).unwrap().id();
+                let parent_blob_id = commit.parent(0)?.tree()?.get_name(filename).unwrap().id();
                 if blob_id == parent_blob_id {
                     continue;
                 }
@@ -181,14 +203,13 @@ pub fn page_history(
 /// Read a page at a specific commit revision.
 pub fn page_at_revision(
     repo: &Repository,
-    page_id: &str,
+    filename: &str,
     commit_oid: Oid,
 ) -> Result<Option<String>, AppError> {
     let commit = repo.find_commit(commit_oid)?;
     let tree = commit.tree()?;
-    let filename = format!("{page_id}.md");
 
-    match tree.get_name(&filename) {
+    match tree.get_name(filename) {
         Some(entry) => {
             let blob = repo.find_blob(entry.id())?;
             let content = std::str::from_utf8(blob.content())
@@ -238,9 +259,9 @@ pub fn push_to_remote(repo: &Repository) {
     let mut push_options = PushOptions::new();
     push_options.remote_callbacks(callbacks);
 
-    // Determine the refspec based on HEAD
+    // Determine the refspec based on HEAD (force push to handle diverged history)
     let refspec = if repo.head().is_ok() {
-        "refs/heads/main:refs/heads/main"
+        "+refs/heads/main:refs/heads/main"
     } else {
         return;
     };
@@ -283,12 +304,15 @@ mod tests {
         let repo_path = tmp.path().join("test.git");
         let repo = init_repo(&repo_path).unwrap();
 
+        let filename = title_to_filename("Test Page");
+        assert_eq!(filename, "Test Page.md");
+
         // Write
-        let oid = write_page(&repo, "page1", "Test Page", &["tag1".into()], "📝", "Hello world", "create: Test Page").unwrap();
+        let oid = write_page(&repo, "page1", "Test Page", &["tag1".into()], "📝", "Hello world", "create: Test Page", None).unwrap();
         assert!(!oid.is_zero());
 
         // Read
-        let content = read_page(&repo, "page1").unwrap().unwrap();
+        let content = read_page(&repo, &filename).unwrap().unwrap();
         assert!(content.contains("Hello world"));
         assert!(content.contains("title: \"Test Page\""));
 
@@ -296,18 +320,22 @@ mod tests {
         let body = extract_content(&content);
         assert_eq!(body, "Hello world");
 
-        // Update
-        write_page(&repo, "page1", "Updated", &[], "📝", "Updated body", "update: Updated").unwrap();
-        let content2 = read_page(&repo, "page1").unwrap().unwrap();
+        // Update with rename
+        let old_filename = filename;
+        write_page(&repo, "page1", "Updated", &[], "📝", "Updated body", "update: Updated", Some(&old_filename)).unwrap();
+        let new_filename = title_to_filename("Updated");
+        let content2 = read_page(&repo, &new_filename).unwrap().unwrap();
         assert!(content2.contains("Updated body"));
+        // Old file should be gone
+        assert!(read_page(&repo, &old_filename).unwrap().is_none());
 
         // History
-        let history = page_history(&repo, "page1", 10).unwrap();
-        assert_eq!(history.len(), 2);
+        let history = page_history(&repo, &new_filename, 10).unwrap();
+        assert_eq!(history.len(), 1); // only 1 since filename changed
 
         // Delete
-        delete_page(&repo, "page1", "Updated").unwrap();
-        let content3 = read_page(&repo, "page1").unwrap();
+        delete_page(&repo, &new_filename, "Updated").unwrap();
+        let content3 = read_page(&repo, &new_filename).unwrap();
         assert!(content3.is_none());
     }
 }

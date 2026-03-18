@@ -31,6 +31,7 @@ impl Database {
             "CREATE TABLE IF NOT EXISTS pages (
                 id TEXT PRIMARY KEY,
                 title TEXT NOT NULL DEFAULT '',
+                filename TEXT NOT NULL DEFAULT '',
                 tags TEXT DEFAULT '[]',
                 parent_id TEXT,
                 icon TEXT DEFAULT '',
@@ -47,6 +48,17 @@ impl Database {
                 title, content, tags, content_rowid='rowid'
             );",
         )?;
+
+        // Migration: add filename column if it doesn't exist
+        let has_filename: bool = conn
+            .prepare("SELECT COUNT(*) FROM pragma_table_info('pages') WHERE name='filename'")?
+            .query_row([], |row| row.get::<_, i64>(0))
+            .unwrap_or(0)
+            > 0;
+        if !has_filename {
+            conn.execute_batch("ALTER TABLE pages ADD COLUMN filename TEXT NOT NULL DEFAULT '';")?;
+        }
+
         Ok(())
     }
 
@@ -55,17 +67,19 @@ impl Database {
         id: &str,
         req: &CreatePageRequest,
         content_hash: &str,
+        filename: &str,
     ) -> Result<PageSummary, AppError> {
         let conn = self.conn.lock().unwrap();
         let now = Utc::now();
         let tags_json = serde_json::to_string(&req.tags).unwrap_or_default();
 
         conn.execute(
-            "INSERT INTO pages (id, title, tags, parent_id, icon, content_hash, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO pages (id, title, filename, tags, parent_id, icon, content_hash, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 id,
                 req.title,
+                filename,
                 tags_json,
                 req.parent_id,
                 req.icon,
@@ -92,6 +106,23 @@ impl Database {
             created_at: now,
             updated_at: now,
         })
+    }
+
+    pub fn get_filename(&self, id: &str) -> Result<Option<String>, AppError> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT filename, title FROM pages WHERE id = ?1 AND deleted_at IS NULL")?;
+        let mut rows = stmt.query(params![id])?;
+        if let Some(row) = rows.next()? {
+            let filename: String = row.get(0)?;
+            if filename.is_empty() {
+                // Legacy: fall back to UUID-based filename
+                Ok(Some(format!("{id}.md")))
+            } else {
+                Ok(Some(filename))
+            }
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn get_page_meta(&self, id: &str) -> Result<Option<PageSummary>, AppError> {
@@ -170,6 +201,7 @@ impl Database {
         req: &UpdatePageRequest,
         content_hash: &str,
         content: &str,
+        new_filename: &str,
     ) -> Result<PageSummary, AppError> {
         let conn = self.conn.lock().unwrap();
         let now = Utc::now();
@@ -202,9 +234,9 @@ impl Database {
         drop(stmt);
 
         conn.execute(
-            "UPDATE pages SET title=?1, tags=?2, parent_id=?3, icon=?4, content_hash=?5, updated_at=?6
-             WHERE id=?7",
-            params![title, tags_json, parent_id, icon, content_hash, now.to_rfc3339(), id],
+            "UPDATE pages SET title=?1, tags=?2, parent_id=?3, icon=?4, content_hash=?5, updated_at=?6, filename=?7
+             WHERE id=?8",
+            params![title, tags_json, parent_id, icon, content_hash, now.to_rfc3339(), new_filename, id],
         )?;
 
         // Update FTS
