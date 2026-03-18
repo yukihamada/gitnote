@@ -22,6 +22,7 @@ pub async fn create_page(
 
     let repo = git::init_repo(&state.repo_path)?;
     git::write_page(&repo, &id, &req.title, &req.tags, &req.icon, &req.content, &message)?;
+    git::push_to_remote(&repo);
 
     let summary = state.db.insert_page(&id, &req, "")?;
     Ok(Json(Page {
@@ -89,6 +90,7 @@ pub async fn update_page(
 
     let message = format!("update: {title}");
     git::write_page(&repo, &id, title, tags, icon, &content, &message)?;
+    git::push_to_remote(&repo);
 
     let summary = state.db.update_page(&id, &req, "", &content)?;
     Ok(Json(Page {
@@ -111,6 +113,7 @@ pub async fn delete_page(
 
     let repo = git::init_repo(&state.repo_path)?;
     git::delete_page(&repo, &id, &meta.title)?;
+    git::push_to_remote(&repo);
     state.db.soft_delete_page(&id)?;
 
     Ok(Json(serde_json::json!({ "deleted": true })))
@@ -160,6 +163,7 @@ pub async fn restore_page(
 
     let message = format!("restore: {} to {}", &meta.title, &oid_str[..8]);
     git::write_page(&repo, &id, &meta.title, &meta.tags, &meta.icon, &content, &message)?;
+    git::push_to_remote(&repo);
 
     let req = UpdatePageRequest {
         title: None,

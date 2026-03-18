@@ -40,7 +40,13 @@ async fn main() {
 
     let database = db::Database::new(&db_path).expect("Failed to open database");
     let repo_path = PathBuf::from(&repo_path);
-    git::init_repo(&repo_path).expect("Failed to init git repo");
+    let repo = git::init_repo(&repo_path).expect("Failed to init git repo");
+
+    // Set up GitHub remote if configured
+    if let Ok(remote_url) = std::env::var("GITHUB_REMOTE_URL") {
+        git::setup_remote(&repo, &remote_url).expect("Failed to setup remote");
+        tracing::info!("GitHub remote configured: {remote_url}");
+    }
 
     let state = Arc::new(AppState {
         db: database,

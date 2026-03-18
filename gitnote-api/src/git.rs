@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use git2::{Oid, Repository, Signature};
+use git2::{Cred, Oid, PushOptions, RemoteCallbacks, Repository, Signature};
 
 use crate::error::AppError;
 use crate::models::CommitInfo;
@@ -196,6 +196,68 @@ pub fn page_at_revision(
             Ok(Some(content.to_string()))
         }
         None => Ok(None),
+    }
+}
+
+/// Set up the remote for GitHub sync.
+pub fn setup_remote(repo: &Repository, remote_url: &str) -> Result<(), AppError> {
+    match repo.find_remote("origin") {
+        Ok(_) => {
+            repo.remote_set_url("origin", remote_url)?;
+        }
+        Err(_) => {
+            repo.remote("origin", remote_url)?;
+        }
+    }
+    Ok(())
+}
+
+/// Push to the remote (GitHub). Runs in background, logs errors but doesn't fail the request.
+pub fn push_to_remote(repo: &Repository) {
+    let token = match std::env::var("GITHUB_TOKEN") {
+        Ok(t) => t,
+        Err(_) => {
+            tracing::debug!("GITHUB_TOKEN not set, skipping push");
+            return;
+        }
+    };
+
+    let mut remote = match repo.find_remote("origin") {
+        Ok(r) => r,
+        Err(_) => {
+            tracing::debug!("No remote 'origin', skipping push");
+            return;
+        }
+    };
+
+    let mut callbacks = RemoteCallbacks::new();
+    callbacks.credentials(move |_url, _username, _allowed| {
+        Cred::userpass_plaintext("x-access-token", &token)
+    });
+
+    let mut push_options = PushOptions::new();
+    push_options.remote_callbacks(callbacks);
+
+    // Determine the refspec based on HEAD
+    let refspec = if repo.head().is_ok() {
+        "refs/heads/main:refs/heads/main"
+    } else {
+        return;
+    };
+
+    // Ensure HEAD points to refs/heads/main
+    if let Ok(head) = repo.head() {
+        if head.name() != Some("refs/heads/main") {
+            if let Ok(commit) = head.peel_to_commit() {
+                let _ = repo.branch("main", &commit, true);
+                let _ = repo.set_head("refs/heads/main");
+            }
+        }
+    }
+
+    match remote.push(&[refspec], Some(&mut push_options)) {
+        Ok(_) => tracing::info!("Pushed to GitHub successfully"),
+        Err(e) => tracing::warn!("Failed to push to GitHub: {e}"),
     }
 }
 
