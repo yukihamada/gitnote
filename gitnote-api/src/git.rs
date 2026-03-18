@@ -31,22 +31,26 @@ pub fn init_repo(path: &Path) -> Result<Repository, AppError> {
     }
 }
 
-/// Build a Markdown page with YAML frontmatter.
+/// Build a Markdown page with Obsidian-compatible YAML frontmatter.
 fn build_markdown(id: &str, title: &str, tags: &[String], icon: &str, content: &str) -> String {
-    let tags_yaml = if tags.is_empty() {
-        "[]".to_string()
+    let mut fm = String::from("---\n");
+    fm.push_str(&format!("id: \"{id}\"\n"));
+    // Tags as YAML list (Obsidian standard)
+    if tags.is_empty() {
+        fm.push_str("tags: []\n");
     } else {
-        format!(
-            "[{}]",
-            tags.iter()
-                .map(|t| format!("\"{}\"", t.replace('"', "\\\"")))
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
-    };
-    format!(
-        "---\nid: \"{id}\"\ntitle: \"{title}\"\ntags: {tags_yaml}\nicon: \"{icon}\"\n---\n\n{content}"
-    )
+        fm.push_str("tags:\n");
+        for tag in tags {
+            fm.push_str(&format!("  - {tag}\n"));
+        }
+    }
+    if !icon.is_empty() {
+        fm.push_str(&format!("icon: \"{icon}\"\n"));
+    }
+    fm.push_str(&format!("aliases:\n  - \"{title}\"\n"));
+    fm.push_str("---\n\n");
+    fm.push_str(content);
+    fm
 }
 
 /// Write a page to the repo and create a commit. Returns the commit OID.
@@ -314,7 +318,8 @@ mod tests {
         // Read
         let content = read_page(&repo, &filename).unwrap().unwrap();
         assert!(content.contains("Hello world"));
-        assert!(content.contains("title: \"Test Page\""));
+        assert!(content.contains("aliases:"));
+        assert!(content.contains("\"Test Page\""));
 
         // Extract content
         let body = extract_content(&content);
