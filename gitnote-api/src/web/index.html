@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitNote</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --sidebar-w: 280px;
+  --bg: #ffffff;
+  --sidebar-bg: #f7f7f5;
+  --sidebar-hover: #efefed;
+  --sidebar-active: #e8e8e6;
+  --border: #e8e8e6;
+  --text: #37352f;
+  --text-secondary: #787774;
+  --text-placeholder: #b4b4b0;
+  --accent: #2eaadc;
+  --accent-light: #e8f4f8;
+  --tag-bg: #f0f0ee;
+  --danger: #eb5757;
+  --success: #27ae60;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --radius: 6px;
+  --transition: 180ms ease;
+}
+
+html, body {
+  height: 100%;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* Layout */
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform var(--transition);
+  z-index: 20;
+}
+
+.sidebar-header {
+  padding: 16px 16px 12px;
+  flex-shrink: 0;
+}
+
+.app-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 14px;
+  letter-spacing: -0.01em;
+}
+
+.app-title svg {
+  width: 20px;
+  height: 20px;
+  opacity: 0.7;
+}
+
+.search-box {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.search-box svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: var(--text-placeholder);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 7px 10px 7px 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+}
+
+.search-input::placeholder {
+  color: var(--text-placeholder);
+}
+
+.new-page-btn {
+  width: 100%;
+  padding: 7px 12px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--text);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity var(--transition);
+}
+
+.new-page-btn:hover { opacity: 0.85; }
+
+.page-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px;
+}
+
+.page-list::-webkit-scrollbar { width: 4px; }
+.page-list::-webkit-scrollbar-thumb { background: #d4d4d0; border-radius: 2px; }
+
+.page-item {
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text);
+  transition: background var(--transition);
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-item:hover { background: var(--sidebar-hover); }
+.page-item.active { background: var(--sidebar-active); font-weight: 500; }
+
+.page-item-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+  width: 22px;
+  text-align: center;
+}
+
+.page-item-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-placeholder);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Main */
+.main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.main-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-placeholder);
+  font-size: 15px;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.main-empty svg { width: 48px; height: 48px; opacity: 0.3; }
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  min-height: 44px;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.save-status {
+  font-size: 12px;
+  color: var(--text-placeholder);
+  transition: color var(--transition);
+}
+
+.save-status.saving { color: var(--accent); }
+.save-status.saved { color: var(--success); }
+.save-status.error { color: var(--danger); }
+
+.toolbar-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--transition);
+}
+
+.toolbar-btn:hover { background: var(--sidebar-bg); color: var(--text); }
+.toolbar-btn.danger:hover { background: #fde8e8; color: var(--danger); border-color: var(--danger); }
+
+.editor-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 64px 64px;
+}
+
+.editor-scroll::-webkit-scrollbar { width: 6px; }
+.editor-scroll::-webkit-scrollbar-thumb { background: #d4d4d0; border-radius: 3px; }
+
+.title-field {
+  font-size: 32px;
+  font-weight: 700;
+  border: none;
+  outline: none;
+  width: 100%;
+  color: var(--text);
+  line-height: 1.2;
+  margin-bottom: 4px;
+  min-height: 42px;
+}
+
+.title-field:empty::before {
+  content: "Untitled";
+  color: var(--text-placeholder);
+}
+
+.tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+  min-height: 26px;
+  align-items: center;
+}
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--tag-bg);
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.tag-pill .tag-remove {
+  cursor: pointer;
+  opacity: 0.5;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tag-pill .tag-remove:hover { opacity: 1; }
+
+.tag-input {
+  border: none;
+  outline: none;
+  font-size: 12px;
+  color: var(--text);
+  background: transparent;
+  min-width: 60px;
+}
+
+.tag-input::placeholder { color: var(--text-placeholder); }
+
+.content-field {
+  width: 100%;
+  min-height: 400px;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text);
+  background: transparent;
+}
+
+.content-field::placeholder { color: var(--text-placeholder); }
+
+/* History Panel */
+.history-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.15);
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.history-overlay.open { opacity: 1; pointer-events: auto; }
+
+.history-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 380px;
+  max-width: 90vw;
+  height: 100%;
+  background: var(--bg);
+  box-shadow: -4px 0 20px rgba(0,0,0,0.1);
+  z-index: 51;
+  transform: translateX(100%);
+  transition: transform 250ms ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-panel.open { transform: translateX(0); }
+
+.history-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.history-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.history-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px;
+  line-height: 1;
+}
+
+.history-close:hover { color: var(--text); }
+
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.history-item {
+  padding: 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--transition);
+  border: 1px solid transparent;
+}
+
+.history-item:hover { background: var(--sidebar-bg); }
+.history-item.active { border-color: var(--accent); background: var(--accent-light); }
+
+.history-item-msg {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.history-item-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.history-preview {
+  border-top: 1px solid var(--border);
+  padding: 16px 20px;
+  flex-shrink: 0;
+  display: none;
+}
+
+.history-preview.visible { display: block; }
+
+.history-preview pre {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--sidebar-bg);
+  padding: 12px;
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 10px;
+}
+
+.restore-btn {
+  padding: 7px 14px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity var(--transition);
+}
+
+.restore-btn:hover { opacity: 0.85; }
+
+.history-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-placeholder);
+  font-size: 13px;
+}
+
+/* Mobile toggle */
+.mobile-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--text);
+}
+
+.mobile-toggle svg { width: 20px; height: 20px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .app { grid-template-columns: 1fr; }
+
+  .sidebar {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: 320px;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+  }
+
+  .sidebar.open { transform: translateX(0); }
+
+  .mobile-toggle { display: flex; }
+
+  .editor-scroll { padding: 24px 20px 48px; }
+
+  .title-field { font-size: 26px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="app-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"/>
+          <line x1="1.05" y1="12" x2="7" y2="12"/>
+          <line x1="17.01" y1="12" x2="22.96" y2="12"/>
+          <line x1="12" y1="1.05" x2="12" y2="7"/>
+          <line x1="12" y1="17.01" x2="12" y2="22.96"/>
+        </svg>
+        GitNote
+      </div>
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" class="search-input" id="searchInput" placeholder="Search pages...">
+      </div>
+      <button class="new-page-btn" id="newPageBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Page
+      </button>
+    </div>
+    <div class="page-list" id="pageList"></div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main" id="main">
+    <div class="main-empty" id="emptyState">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+      </svg>
+      <span>Select a page or create a new one</span>
+      <span style="font-size:12px;color:var(--text-placeholder)">Press Cmd+N to create</span>
+    </div>
+
+    <div id="editorArea" style="display:none;flex-direction:column;height:100%">
+      <div class="editor-toolbar">
+        <div class="toolbar-left">
+          <button class="mobile-toggle" id="mobileToggle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <span class="save-status" id="saveStatus"></span>
+        </div>
+        <div class="toolbar-right">
+          <button class="toolbar-btn" id="historyBtn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            History
+          </button>
+          <button class="toolbar-btn danger" id="deleteBtn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Delete
+          </button>
+        </div>
+      </div>
+      <div class="editor-scroll">
+        <div class="title-field" id="titleField" contenteditable="true" spellcheck="true"></div>
+        <div class="tags-row" id="tagsRow">
+          <input type="text" class="tag-input" id="tagInput" placeholder="Add tag...">
+        </div>
+        <textarea class="content-field" id="contentField" placeholder="Start writing..."></textarea>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- History Panel -->
+<div class="history-overlay" id="historyOverlay"></div>
+<div class="history-panel" id="historyPanel">
+  <div class="history-header">
+    <h3>Version History</h3>
+    <button class="history-close" id="historyClose">&times;</button>
+  </div>
+  <div class="history-list" id="historyList"></div>
+  <div class="history-preview" id="historyPreview">
+    <pre id="historyPreviewContent"></pre>
+    <button class="restore-btn" id="restoreBtn">Restore this version</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  // State
+  let pages = [];
+  let currentPage = null;
+  let saveTimer = null;
+  let searchTimer = null;
+  let isSearching = false;
+  let selectedOid = null;
+
+  // DOM refs
+  const sidebar = document.getElementById("sidebar");
+  const pageList = document.getElementById("pageList");
+  const searchInput = document.getElementById("searchInput");
+  const newPageBtn = document.getElementById("newPageBtn");
+  const emptyState = document.getElementById("emptyState");
+  const editorArea = document.getElementById("editorArea");
+  const titleField = document.getElementById("titleField");
+  const contentField = document.getElementById("contentField");
+  const tagsRow = document.getElementById("tagsRow");
+  const tagInput = document.getElementById("tagInput");
+  const saveStatus = document.getElementById("saveStatus");
+  const historyBtn = document.getElementById("historyBtn");
+  const deleteBtn = document.getElementById("deleteBtn");
+  const historyOverlay = document.getElementById("historyOverlay");
+  const historyPanel = document.getElementById("historyPanel");
+  const historyClose = document.getElementById("historyClose");
+  const historyList = document.getElementById("historyList");
+  const historyPreview = document.getElementById("historyPreview");
+  const historyPreviewContent = document.getElementById("historyPreviewContent");
+  const restoreBtn = document.getElementById("restoreBtn");
+  const mobileToggle = document.getElementById("mobileToggle");
+
+  // API helpers
+  async function api(method, path, body) {
+    const opts = { method, headers: {} };
+    if (body) {
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(body);
+    }
+    const res = await fetch(path, opts);
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    if (res.status === 204) return null;
+    return res.json();
+  }
+
+  // Render page list
+  function renderPageList(list) {
+    if (list.length === 0) {
+      pageList.innerHTML = '<div class="sidebar-empty">' +
+        (isSearching ? "No pages found" : "No pages yet.<br>Create your first page!") +
+        "</div>";
+      return;
+    }
+    pageList.innerHTML = list.map(function(p) {
+      const active = currentPage && currentPage.id === p.id ? " active" : "";
+      const icon = p.icon || "\u{1F4C4}";
+      const title = escapeHtml(p.title || "Untitled");
+      return '<div class="page-item' + active + '" data-id="' + p.id + '">' +
+        '<span class="page-item-icon">' + icon + '</span>' +
+        '<span class="page-item-title">' + title + '</span></div>';
+    }).join("");
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  // Load all pages
+  async function loadPages() {
+    try {
+      const data = await api("GET", "/api/pages");
+      pages = data.pages || [];
+      pages.sort(function(a, b) {
+        return new Date(b.updated_at) - new Date(a.updated_at);
+      });
+      if (!isSearching) renderPageList(pages);
+    } catch (e) {
+      console.error("Failed to load pages:", e);
+    }
+  }
+
+  // Select page
+  async function selectPage(id) {
+    if (saveTimer) { clearTimeout(saveTimer); await saveCurrent(); }
+    try {
+      const page = await api("GET", "/api/pages/" + id);
+      currentPage = page;
+      showEditor();
+      titleField.textContent = page.title || "";
+      contentField.value = page.content || "";
+      renderTags(page.tags || []);
+      renderPageList(isSearching ? pages : pages);
+      updateSaveStatus("");
+      closeSidebar();
+    } catch (e) {
+      console.error("Failed to load page:", e);
+    }
+  }
+
+  // Show/hide editor
+  function showEditor() {
+    emptyState.style.display = "none";
+    editorArea.style.display = "flex";
+  }
+
+  function hideEditor() {
+    emptyState.style.display = "";
+    editorArea.style.display = "none";
+    currentPage = null;
+  }
+
+  // Tags
+  function renderTags(tags) {
+    var pills = tagsRow.querySelectorAll(".tag-pill");
+    pills.forEach(function(el) { el.remove(); });
+    (tags || []).forEach(function(tag) {
+      var pill = document.createElement("span");
+      pill.className = "tag-pill";
+      pill.innerHTML = escapeHtml(tag) + ' <span class="tag-remove" data-tag="' + escapeHtml(tag) + '">&times;</span>';
+      tagsRow.insertBefore(pill, tagInput);
+    });
+  }
+
+  function getCurrentTags() {
+    var pills = tagsRow.querySelectorAll(".tag-pill");
+    return Array.from(pills).map(function(el) {
+      return el.textContent.replace(/\s*\u00d7\s*$/, "").trim();
+    });
+  }
+
+  // Save
+  function scheduleSave() {
+    if (saveTimer) clearTimeout(saveTimer);
+    updateSaveStatus("saving");
+    saveTimer = setTimeout(saveCurrent, 2000);
+  }
+
+  async function saveCurrent() {
+    saveTimer = null;
+    if (!currentPage) return;
+    try {
+      const body = {
+        title: titleField.textContent.trim() || "Untitled",
+        content: contentField.value,
+        tags: getCurrentTags(),
+        icon: currentPage.icon || ""
+      };
+      const updated = await api("PUT", "/api/pages/" + currentPage.id, body);
+      currentPage = updated;
+      updateSaveStatus("saved");
+      await loadPages();
+    } catch (e) {
+      console.error("Save error:", e);
+      updateSaveStatus("error");
+    }
+  }
+
+  function updateSaveStatus(state) {
+    saveStatus.className = "save-status" + (state ? " " + state : "");
+    if (state === "saving") saveStatus.textContent = "Saving...";
+    else if (state === "saved") saveStatus.textContent = "Saved";
+    else if (state === "error") saveStatus.textContent = "Error saving";
+    else saveStatus.textContent = "";
+  }
+
+  // New page
+  async function createPage() {
+    try {
+      const page = await api("POST", "/api/pages", {
+        title: "", content: "", tags: [], icon: ""
+      });
+      await loadPages();
+      await selectPage(page.id);
+      titleField.focus();
+    } catch (e) {
+      console.error("Failed to create page:", e);
+    }
+  }
+
+  // Delete page
+  async function deletePage() {
+    if (!currentPage) return;
+    if (!confirm("Delete this page?")) return;
+    try {
+      await api("DELETE", "/api/pages/" + currentPage.id);
+      hideEditor();
+      await loadPages();
+    } catch (e) {
+      console.error("Failed to delete:", e);
+    }
+  }
+
+  // Search
+  function doSearch() {
+    const q = searchInput.value.trim();
+    if (!q) {
+      isSearching = false;
+      renderPageList(pages);
+      return;
+    }
+    isSearching = true;
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(async function() {
+      try {
+        const data = await api("GET", "/api/search?q=" + encodeURIComponent(q));
+        renderPageList(data.pages || []);
+      } catch (e) {
+        console.error("Search error:", e);
+      }
+    }, 300);
+  }
+
+  // History
+  async function openHistory() {
+    if (!currentPage) return;
+    selectedOid = null;
+    historyPreview.classList.remove("visible");
+    historyOverlay.classList.add("open");
+    historyPanel.classList.add("open");
+    historyList.innerHTML = '<div class="history-empty">Loading...</div>';
+    try {
+      const commits = await api("GET", "/api/pages/" + currentPage.id + "/history");
+      if (!commits || commits.length === 0) {
+        historyList.innerHTML = '<div class="history-empty">No version history yet</div>';
+        return;
+      }
+      historyList.innerHTML = commits.map(function(c) {
+        var d = new Date(c.timestamp * 1000 || c.timestamp);
+        var timeStr = d.toLocaleString();
+        return '<div class="history-item" data-oid="' + c.oid + '">' +
+          '<div class="history-item-msg">' + escapeHtml(c.message || "Update") + '</div>' +
+          '<div class="history-item-meta">' + escapeHtml(c.author || "") + " &middot; " + timeStr + '</div></div>';
+      }).join("");
+    } catch (e) {
+      historyList.innerHTML = '<div class="history-empty">Failed to load history</div>';
+    }
+  }
+
+  function closeHistory() {
+    historyOverlay.classList.remove("open");
+    historyPanel.classList.remove("open");
+  }
+
+  async function previewRevision(oid) {
+    if (!currentPage) return;
+    selectedOid = oid;
+    // Highlight active
+    historyList.querySelectorAll(".history-item").forEach(function(el) {
+      el.classList.toggle("active", el.dataset.oid === oid);
+    });
+    try {
+      const rev = await api("GET", "/api/pages/" + currentPage.id + "/revisions/" + oid);
+      historyPreviewContent.textContent = (rev.title || "Untitled") + "\n\n" + (rev.content || "");
+      historyPreview.classList.add("visible");
+    } catch (e) {
+      historyPreviewContent.textContent = "Failed to load revision";
+      historyPreview.classList.add("visible");
+    }
+  }
+
+  async function restoreRevision() {
+    if (!currentPage || !selectedOid) return;
+    try {
+      await api("POST", "/api/pages/" + currentPage.id + "/restore/" + selectedOid);
+      closeHistory();
+      await selectPage(currentPage.id);
+      await loadPages();
+    } catch (e) {
+      console.error("Restore failed:", e);
+    }
+  }
+
+  // Mobile sidebar
+  function closeSidebar() {
+    if (window.innerWidth <= 768) sidebar.classList.remove("open");
+  }
+
+  // Events
+  pageList.addEventListener("click", function(e) {
+    var item = e.target.closest(".page-item");
+    if (item) selectPage(item.dataset.id);
+  });
+
+  newPageBtn.addEventListener("click", createPage);
+  deleteBtn.addEventListener("click", deletePage);
+  searchInput.addEventListener("input", doSearch);
+
+  titleField.addEventListener("input", scheduleSave);
+  contentField.addEventListener("input", function() {
+    // Auto-grow textarea
+    contentField.style.height = "auto";
+    contentField.style.height = Math.max(400, contentField.scrollHeight) + "px";
+    scheduleSave();
+  });
+
+  tagInput.addEventListener("keydown", function(e) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      var val = tagInput.value.trim().replace(/,$/, "");
+      if (val) {
+        var tags = getCurrentTags();
+        if (tags.indexOf(val) === -1) {
+          tags.push(val);
+          renderTags(tags);
+          scheduleSave();
+        }
+      }
+      tagInput.value = "";
+    }
+    if (e.key === "Backspace" && !tagInput.value) {
+      var pills = tagsRow.querySelectorAll(".tag-pill");
+      if (pills.length) {
+        pills[pills.length - 1].remove();
+        scheduleSave();
+      }
+    }
+  });
+
+  tagsRow.addEventListener("click", function(e) {
+    if (e.target.classList.contains("tag-remove")) {
+      e.target.parentElement.remove();
+      scheduleSave();
+    }
+  });
+
+  historyBtn.addEventListener("click", openHistory);
+  historyClose.addEventListener("click", closeHistory);
+  historyOverlay.addEventListener("click", closeHistory);
+
+  historyList.addEventListener("click", function(e) {
+    var item = e.target.closest(".history-item");
+    if (item) previewRevision(item.dataset.oid);
+  });
+
+  restoreBtn.addEventListener("click", restoreRevision);
+
+  mobileToggle.addEventListener("click", function() {
+    sidebar.classList.toggle("open");
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener("keydown", function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "n") {
+      e.preventDefault();
+      createPage();
+    }
+    if (e.key === "Escape") {
+      closeHistory();
+      closeSidebar();
+    }
+  });
+
+  // Init
+  loadPages();
+})();
+</script>
+</body>
+</html>
