@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f7f7f5">
 <title>GitNote</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -23,16 +27,20 @@
   --danger: #eb5757;
   --success: #27ae60;
   --shadow: 0 1px 3px rgba(0,0,0,0.08);
-  --radius: 6px;
+  --radius: 8px;
   --transition: 180ms ease;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 html, body {
   height: 100%;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   color: var(--text);
   background: var(--bg);
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Layout */
@@ -40,6 +48,7 @@ html, body {
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
   height: 100vh;
+  height: 100dvh;
 }
 
 /* Sidebar */
@@ -54,7 +63,7 @@ html, body {
 }
 
 .sidebar-header {
-  padding: 16px 16px 12px;
+  padding: calc(16px + var(--safe-top)) 16px 12px;
   flex-shrink: 0;
 }
 
@@ -69,443 +78,277 @@ html, body {
   letter-spacing: -0.01em;
 }
 
-.app-title svg {
-  width: 20px;
-  height: 20px;
-  opacity: 0.7;
-}
+.app-title svg { width: 20px; height: 20px; opacity: 0.7; }
 
-.search-box {
-  position: relative;
-  margin-bottom: 10px;
-}
-
+.search-box { position: relative; margin-bottom: 10px; }
 .search-box svg {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 14px;
-  height: 14px;
-  color: var(--text-placeholder);
-  pointer-events: none;
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  width: 14px; height: 14px; color: var(--text-placeholder); pointer-events: none;
 }
 
 .search-input {
-  width: 100%;
-  padding: 7px 10px 7px 30px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  font-size: 13px;
-  color: var(--text);
-  outline: none;
+  width: 100%; padding: 9px 10px 9px 32px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg); font-size: 15px; color: var(--text); outline: none;
   transition: border-color var(--transition);
 }
-
-.search-input:focus {
-  border-color: var(--accent);
-}
-
-.search-input::placeholder {
-  color: var(--text-placeholder);
-}
+.search-input:focus { border-color: var(--accent); }
+.search-input::placeholder { color: var(--text-placeholder); }
 
 .new-page-btn {
-  width: 100%;
-  padding: 7px 12px;
-  border: none;
-  border-radius: var(--radius);
-  background: var(--text);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+  width: 100%; padding: 10px 12px; border: none; border-radius: var(--radius);
+  background: var(--text); color: #fff; font-size: 14px; font-weight: 500;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
   transition: opacity var(--transition);
 }
-
 .new-page-btn:hover { opacity: 0.85; }
+.new-page-btn:active { opacity: 0.7; }
 
-.page-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 6px 8px;
-}
-
+.page-list { flex: 1; overflow-y: auto; padding: 6px 8px; -webkit-overflow-scrolling: touch; }
 .page-list::-webkit-scrollbar { width: 4px; }
 .page-list::-webkit-scrollbar-thumb { background: #d4d4d0; border-radius: 2px; }
 
 .page-item {
-  padding: 8px 10px;
-  border-radius: var(--radius);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--text);
-  transition: background var(--transition);
-  user-select: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 10px 12px; border-radius: var(--radius); cursor: pointer;
+  display: flex; align-items: center; gap: 10px; font-size: 15px;
+  color: var(--text); transition: background var(--transition);
+  user-select: none; min-height: 44px;
 }
-
 .page-item:hover { background: var(--sidebar-hover); }
+.page-item:active { background: var(--sidebar-active); }
 .page-item.active { background: var(--sidebar-active); font-weight: 500; }
-
-.page-item-icon {
-  flex-shrink: 0;
-  font-size: 16px;
-  width: 22px;
-  text-align: center;
-}
-
-.page-item-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.page-item-icon { flex-shrink: 0; font-size: 18px; width: 24px; text-align: center; }
+.page-item-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .sidebar-empty {
-  padding: 24px 16px;
-  text-align: center;
-  color: var(--text-placeholder);
-  font-size: 13px;
-  line-height: 1.5;
+  padding: 24px 16px; text-align: center; color: var(--text-placeholder);
+  font-size: 14px; line-height: 1.5;
 }
 
 /* Main */
-.main {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  position: relative;
-}
+.main { display: flex; flex-direction: column; overflow: hidden; position: relative; }
 
 .main-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--text-placeholder);
-  font-size: 15px;
-  flex-direction: column;
-  gap: 8px;
+  display: flex; align-items: center; justify-content: center; height: 100%;
+  color: var(--text-placeholder); font-size: 15px; flex-direction: column; gap: 8px;
 }
-
 .main-empty svg { width: 48px; height: 48px; opacity: 0.3; }
 
 .editor-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-  min-height: 44px;
-}
-
-.toolbar-left {
-  display: flex;
-  align-items: center;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px; padding-top: calc(8px + var(--safe-top));
+  border-bottom: 1px solid var(--border); flex-shrink: 0; min-height: 44px;
   gap: 8px;
 }
+.toolbar-left { display: flex; align-items: center; gap: 8px; }
+.toolbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.save-status {
-  font-size: 12px;
-  color: var(--text-placeholder);
-  transition: color var(--transition);
-}
-
+.save-status { font-size: 12px; color: var(--text-placeholder); transition: color var(--transition); white-space: nowrap; }
 .save-status.saving { color: var(--accent); }
 .save-status.saved { color: var(--success); }
 .save-status.error { color: var(--danger); }
 
 .toolbar-btn {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 5px 10px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: all var(--transition);
+  background: none; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 6px 10px; font-size: 13px; color: var(--text-secondary); cursor: pointer;
+  display: flex; align-items: center; gap: 4px; transition: all var(--transition);
+  white-space: nowrap; min-height: 34px;
 }
-
 .toolbar-btn:hover { background: var(--sidebar-bg); color: var(--text); }
+.toolbar-btn:active { background: var(--sidebar-active); }
 .toolbar-btn.danger:hover { background: #fde8e8; color: var(--danger); border-color: var(--danger); }
+.toolbar-btn svg { flex-shrink: 0; }
+.toolbar-btn-text { display: inline; }
 
 .editor-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: 32px 64px 64px;
+  flex: 1; overflow-y: auto; padding: 24px 48px 64px; -webkit-overflow-scrolling: touch;
 }
-
 .editor-scroll::-webkit-scrollbar { width: 6px; }
 .editor-scroll::-webkit-scrollbar-thumb { background: #d4d4d0; border-radius: 3px; }
 
 .title-field {
-  font-size: 32px;
-  font-weight: 700;
-  border: none;
-  outline: none;
-  width: 100%;
-  color: var(--text);
-  line-height: 1.2;
-  margin-bottom: 4px;
-  min-height: 42px;
+  font-size: 30px; font-weight: 700; border: none; outline: none; width: 100%;
+  color: var(--text); line-height: 1.25; margin-bottom: 8px; min-height: 40px;
+  word-break: break-word;
 }
-
-.title-field:empty::before {
-  content: "Untitled";
-  color: var(--text-placeholder);
-}
+.title-field:empty::before { content: "Untitled"; color: var(--text-placeholder); }
 
 .tags-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 16px;
-  min-height: 26px;
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; min-height: 28px;
   align-items: center;
 }
-
 .tag-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  background: var(--tag-bg);
-  border-radius: 3px;
-  font-size: 12px;
-  color: var(--text-secondary);
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px;
+  background: var(--tag-bg); border-radius: 4px; font-size: 13px; color: var(--text-secondary);
 }
-
-.tag-pill .tag-remove {
-  cursor: pointer;
-  opacity: 0.5;
-  font-size: 14px;
-  line-height: 1;
-}
-
+.tag-pill .tag-remove { cursor: pointer; opacity: 0.5; font-size: 16px; line-height: 1; padding: 2px; }
 .tag-pill .tag-remove:hover { opacity: 1; }
-
 .tag-input {
-  border: none;
-  outline: none;
-  font-size: 12px;
-  color: var(--text);
-  background: transparent;
-  min-width: 60px;
+  border: none; outline: none; font-size: 13px; color: var(--text);
+  background: transparent; min-width: 80px; padding: 3px 0;
 }
-
 .tag-input::placeholder { color: var(--text-placeholder); }
 
 .content-field {
-  width: 100%;
-  min-height: 400px;
-  border: none;
-  outline: none;
-  resize: none;
-  font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--text);
-  background: transparent;
+  width: 100%; min-height: 300px; border: none; outline: none; resize: none;
+  font-family: "SF Mono", "Fira Code", Menlo, Consolas, monospace;
+  font-size: 14px; line-height: 1.7; color: var(--text); background: transparent;
 }
-
 .content-field::placeholder { color: var(--text-placeholder); }
 
 /* History Panel */
 .history-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.15);
-  z-index: 50;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 200ms ease;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.2); z-index: 50;
+  opacity: 0; pointer-events: none; transition: opacity 200ms ease;
 }
-
 .history-overlay.open { opacity: 1; pointer-events: auto; }
 
 .history-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 380px;
-  max-width: 90vw;
-  height: 100%;
-  background: var(--bg);
-  box-shadow: -4px 0 20px rgba(0,0,0,0.1);
-  z-index: 51;
-  transform: translateX(100%);
-  transition: transform 250ms ease;
-  display: flex;
-  flex-direction: column;
+  position: fixed; top: 0; right: 0; width: 380px; max-width: 100vw; height: 100%;
+  background: var(--bg); box-shadow: -4px 0 20px rgba(0,0,0,0.1); z-index: 51;
+  transform: translateX(100%); transition: transform 250ms ease;
+  display: flex; flex-direction: column;
 }
-
 .history-panel.open { transform: translateX(0); }
 
 .history-header {
-  padding: 16px 20px;
+  padding: calc(16px + var(--safe-top)) 20px 16px;
   border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
 }
-
-.history-header h3 {
-  font-size: 15px;
-  font-weight: 600;
-}
-
+.history-header h3 { font-size: 16px; font-weight: 600; }
 .history-close {
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  color: var(--text-secondary);
-  padding: 4px;
-  line-height: 1;
+  background: none; border: none; font-size: 24px; cursor: pointer;
+  color: var(--text-secondary); padding: 4px 8px; line-height: 1;
+  min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center;
 }
-
 .history-close:hover { color: var(--text); }
 
-.history-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
+.history-list { flex: 1; overflow-y: auto; padding: 8px; -webkit-overflow-scrolling: touch; }
 
 .history-item {
-  padding: 12px;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--transition);
-  border: 1px solid transparent;
+  padding: 14px 12px; border-radius: var(--radius); cursor: pointer;
+  transition: background var(--transition); border: 1px solid transparent;
+  min-height: 44px;
 }
-
 .history-item:hover { background: var(--sidebar-bg); }
+.history-item:active { background: var(--sidebar-active); }
 .history-item.active { border-color: var(--accent); background: var(--accent-light); }
-
-.history-item-msg {
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 4px;
-  color: var(--text);
-}
-
-.history-item-meta {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
+.history-item-msg { font-size: 14px; font-weight: 500; margin-bottom: 4px; color: var(--text); }
+.history-item-meta { font-size: 12px; color: var(--text-secondary); }
 
 .history-preview {
-  border-top: 1px solid var(--border);
-  padding: 16px 20px;
-  flex-shrink: 0;
-  display: none;
+  border-top: 1px solid var(--border); padding: 16px 20px;
+  padding-bottom: calc(16px + var(--safe-bottom));
+  flex-shrink: 0; display: none;
 }
-
 .history-preview.visible { display: block; }
-
 .history-preview pre {
-  font-family: "SF Mono", Menlo, Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.6;
-  max-height: 200px;
-  overflow-y: auto;
-  background: var(--sidebar-bg);
-  padding: 12px;
-  border-radius: var(--radius);
-  white-space: pre-wrap;
-  word-break: break-word;
-  margin-bottom: 10px;
+  font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 13px;
+  line-height: 1.6; max-height: 200px; overflow-y: auto;
+  background: var(--sidebar-bg); padding: 12px; border-radius: var(--radius);
+  white-space: pre-wrap; word-break: break-word; margin-bottom: 12px;
 }
-
 .restore-btn {
-  padding: 7px 14px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: opacity var(--transition);
+  width: 100%; padding: 12px 14px; background: var(--accent); color: #fff;
+  border: none; border-radius: var(--radius); font-size: 15px; font-weight: 500;
+  cursor: pointer; transition: opacity var(--transition);
 }
-
 .restore-btn:hover { opacity: 0.85; }
+.restore-btn:active { opacity: 0.7; }
 
-.history-empty {
-  padding: 32px;
-  text-align: center;
-  color: var(--text-placeholder);
-  font-size: 13px;
-}
+.history-empty { padding: 32px; text-align: center; color: var(--text-placeholder); font-size: 14px; }
 
 /* Mobile toggle */
 .mobile-toggle {
-  display: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  color: var(--text);
+  display: none; background: none; border: none; cursor: pointer; padding: 8px;
+  color: var(--text); min-width: 44px; min-height: 44px;
+  align-items: center; justify-content: center;
+}
+.mobile-toggle svg { width: 22px; height: 22px; }
+
+/* Sidebar backdrop */
+.sidebar-backdrop {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+  z-index: 19; opacity: 0; transition: opacity 200ms ease; pointer-events: none;
+}
+.sidebar-backdrop.open { opacity: 1; pointer-events: auto; }
+
+/* Mobile FAB */
+.fab {
+  display: none; position: fixed; right: 20px;
+  bottom: calc(20px + var(--safe-bottom));
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--text); color: #fff; border: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  font-size: 28px; cursor: pointer;
+  align-items: center; justify-content: center;
+  z-index: 10; transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.fab:active { transform: scale(0.92); box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+
+/* ===== RESPONSIVE ===== */
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .editor-scroll { padding: 24px 32px 48px; }
 }
 
-.mobile-toggle svg { width: 20px; height: 20px; }
-
-/* Responsive */
+/* Mobile */
 @media (max-width: 768px) {
   .app { grid-template-columns: 1fr; }
 
   .sidebar {
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    max-width: 320px;
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: 85vw; max-width: 320px;
     transform: translateX(-100%);
-    box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+    box-shadow: 4px 0 20px rgba(0,0,0,0.15);
   }
-
   .sidebar.open { transform: translateX(0); }
+  .sidebar-backdrop { display: block; }
 
   .mobile-toggle { display: flex; }
 
-  .editor-scroll { padding: 24px 20px 48px; }
+  .editor-toolbar {
+    padding: 6px 12px;
+    padding-top: calc(6px + var(--safe-top));
+  }
 
-  .title-field { font-size: 26px; }
+  .editor-scroll { padding: 16px 16px calc(80px + var(--safe-bottom)); }
+
+  .title-field { font-size: 24px; }
+
+  .content-field { font-size: 15px; min-height: 200px; }
+
+  .toolbar-btn { padding: 6px 8px; font-size: 12px; }
+  .toolbar-btn-text { display: none; }
+
+  .new-page-btn { display: none; }
+  .fab { display: flex; }
+
+  .history-panel { width: 100vw; max-width: 100vw; }
+
+  /* Larger touch targets on mobile */
+  .page-item { padding: 12px; min-height: 48px; font-size: 16px; }
+  .search-input { padding: 11px 10px 11px 34px; font-size: 16px; }
+}
+
+/* Small phones */
+@media (max-width: 380px) {
+  .title-field { font-size: 22px; }
+  .editor-scroll { padding: 12px 12px calc(80px + var(--safe-bottom)); }
 }
 </style>
 </head>
 <body>
 
 <div class="app">
-  <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="app-title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="4"/>
-          <line x1="1.05" y1="12" x2="7" y2="12"/>
-          <line x1="17.01" y1="12" x2="22.96" y2="12"/>
-          <line x1="12" y1="1.05" x2="12" y2="7"/>
+          <circle cx="12" cy="12" r="4"/><line x1="1.05" y1="12" x2="7" y2="12"/>
+          <line x1="17.01" y1="12" x2="22.96" y2="12"/><line x1="12" y1="1.05" x2="12" y2="7"/>
           <line x1="12" y1="17.01" x2="12" y2="22.96"/>
         </svg>
         GitNote
@@ -524,18 +367,16 @@ html, body {
     <div class="page-list" id="pageList"></div>
   </aside>
 
-  <!-- Main -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
   <main class="main" id="main">
     <div class="main-empty" id="emptyState">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/>
-        <line x1="16" y1="13" x2="8" y2="13"/>
-        <line x1="16" y1="17" x2="8" y2="17"/>
-        <polyline points="10 9 9 9 8 9"/>
+        <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
       </svg>
       <span>Select a page or create a new one</span>
-      <span style="font-size:12px;color:var(--text-placeholder)">Press Cmd+N to create</span>
     </div>
 
     <div id="editorArea" style="display:none;flex-direction:column;height:100%">
@@ -548,12 +389,12 @@ html, body {
         </div>
         <div class="toolbar-right">
           <button class="toolbar-btn" id="historyBtn">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            History
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span class="toolbar-btn-text">History</span>
           </button>
           <button class="toolbar-btn danger" id="deleteBtn">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            Delete
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span class="toolbar-btn-text">Delete</span>
           </button>
         </div>
       </div>
@@ -568,7 +409,8 @@ html, body {
   </main>
 </div>
 
-<!-- History Panel -->
+<button class="fab" id="fabBtn">+</button>
+
 <div class="history-overlay" id="historyOverlay"></div>
 <div class="history-panel" id="historyPanel">
   <div class="history-header">
@@ -585,137 +427,82 @@ html, body {
 <script>
 (function() {
   "use strict";
+  let pages = [], currentPage = null, saveTimer = null, searchTimer = null, isSearching = false, selectedOid = null;
 
-  // State
-  let pages = [];
-  let currentPage = null;
-  let saveTimer = null;
-  let searchTimer = null;
-  let isSearching = false;
-  let selectedOid = null;
+  const $ = id => document.getElementById(id);
+  const sidebar = $("sidebar"), pageList = $("pageList"), searchInput = $("searchInput");
+  const newPageBtn = $("newPageBtn"), emptyState = $("emptyState"), editorArea = $("editorArea");
+  const titleField = $("titleField"), contentField = $("contentField");
+  const tagsRow = $("tagsRow"), tagInput = $("tagInput"), saveStatus = $("saveStatus");
+  const historyBtn = $("historyBtn"), deleteBtn = $("deleteBtn");
+  const historyOverlay = $("historyOverlay"), historyPanel = $("historyPanel");
+  const historyClose = $("historyClose"), historyList = $("historyList");
+  const historyPreview = $("historyPreview"), historyPreviewContent = $("historyPreviewContent");
+  const restoreBtn = $("restoreBtn"), mobileToggle = $("mobileToggle");
+  const sidebarBackdrop = $("sidebarBackdrop"), fabBtn = $("fabBtn");
 
-  // DOM refs
-  const sidebar = document.getElementById("sidebar");
-  const pageList = document.getElementById("pageList");
-  const searchInput = document.getElementById("searchInput");
-  const newPageBtn = document.getElementById("newPageBtn");
-  const emptyState = document.getElementById("emptyState");
-  const editorArea = document.getElementById("editorArea");
-  const titleField = document.getElementById("titleField");
-  const contentField = document.getElementById("contentField");
-  const tagsRow = document.getElementById("tagsRow");
-  const tagInput = document.getElementById("tagInput");
-  const saveStatus = document.getElementById("saveStatus");
-  const historyBtn = document.getElementById("historyBtn");
-  const deleteBtn = document.getElementById("deleteBtn");
-  const historyOverlay = document.getElementById("historyOverlay");
-  const historyPanel = document.getElementById("historyPanel");
-  const historyClose = document.getElementById("historyClose");
-  const historyList = document.getElementById("historyList");
-  const historyPreview = document.getElementById("historyPreview");
-  const historyPreviewContent = document.getElementById("historyPreviewContent");
-  const restoreBtn = document.getElementById("restoreBtn");
-  const mobileToggle = document.getElementById("mobileToggle");
-
-  // API helpers
   async function api(method, path, body) {
     const opts = { method, headers: {} };
-    if (body) {
-      opts.headers["Content-Type"] = "application/json";
-      opts.body = JSON.stringify(body);
-    }
+    if (body) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
     const res = await fetch(path, opts);
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    if (res.status === 204) return null;
-    return res.json();
+    if (!res.ok) throw new Error(res.status + " " + res.statusText);
+    return res.status === 204 ? null : res.json();
   }
 
-  // Render page list
+  function esc(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
   function renderPageList(list) {
-    if (list.length === 0) {
-      pageList.innerHTML = '<div class="sidebar-empty">' +
-        (isSearching ? "No pages found" : "No pages yet.<br>Create your first page!") +
-        "</div>";
+    if (!list.length) {
+      pageList.innerHTML = '<div class="sidebar-empty">' + (isSearching ? "No results" : "No pages yet") + "</div>";
       return;
     }
-    pageList.innerHTML = list.map(function(p) {
+    pageList.innerHTML = list.map(p => {
       const active = currentPage && currentPage.id === p.id ? " active" : "";
-      const icon = p.icon || "\u{1F4C4}";
-      const title = escapeHtml(p.title || "Untitled");
       return '<div class="page-item' + active + '" data-id="' + p.id + '">' +
-        '<span class="page-item-icon">' + icon + '</span>' +
-        '<span class="page-item-title">' + title + '</span></div>';
+        '<span class="page-item-icon">' + (p.icon || "\u{1F4C4}") + '</span>' +
+        '<span class="page-item-title">' + esc(p.title || "Untitled") + '</span></div>';
     }).join("");
   }
 
-  function escapeHtml(s) {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
-
-  // Load all pages
   async function loadPages() {
     try {
       const data = await api("GET", "/api/pages");
-      pages = data.pages || [];
-      pages.sort(function(a, b) {
-        return new Date(b.updated_at) - new Date(a.updated_at);
-      });
+      pages = (data.pages || []).sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
       if (!isSearching) renderPageList(pages);
-    } catch (e) {
-      console.error("Failed to load pages:", e);
-    }
+    } catch(e) { console.error(e); }
   }
 
-  // Select page
   async function selectPage(id) {
     if (saveTimer) { clearTimeout(saveTimer); await saveCurrent(); }
     try {
       const page = await api("GET", "/api/pages/" + id);
       currentPage = page;
-      showEditor();
+      emptyState.style.display = "none";
+      editorArea.style.display = "flex";
       titleField.textContent = page.title || "";
       contentField.value = page.content || "";
+      autoGrow();
       renderTags(page.tags || []);
-      renderPageList(isSearching ? pages : pages);
+      renderPageList(pages);
       updateSaveStatus("");
       closeSidebar();
-    } catch (e) {
-      console.error("Failed to load page:", e);
-    }
+    } catch(e) { console.error(e); }
   }
 
-  // Show/hide editor
-  function showEditor() {
-    emptyState.style.display = "none";
-    editorArea.style.display = "flex";
-  }
-
-  function hideEditor() {
-    emptyState.style.display = "";
-    editorArea.style.display = "none";
-    currentPage = null;
-  }
-
-  // Tags
   function renderTags(tags) {
-    var pills = tagsRow.querySelectorAll(".tag-pill");
-    pills.forEach(function(el) { el.remove(); });
-    (tags || []).forEach(function(tag) {
-      var pill = document.createElement("span");
+    tagsRow.querySelectorAll(".tag-pill").forEach(el => el.remove());
+    (tags || []).forEach(tag => {
+      const pill = document.createElement("span");
       pill.className = "tag-pill";
-      pill.innerHTML = escapeHtml(tag) + ' <span class="tag-remove" data-tag="' + escapeHtml(tag) + '">&times;</span>';
+      pill.innerHTML = esc(tag) + ' <span class="tag-remove" data-tag="' + esc(tag) + '">\u00d7</span>';
       tagsRow.insertBefore(pill, tagInput);
     });
   }
 
   function getCurrentTags() {
-    var pills = tagsRow.querySelectorAll(".tag-pill");
-    return Array.from(pills).map(function(el) {
-      return el.textContent.replace(/\s*\u00d7\s*$/, "").trim();
-    });
+    return Array.from(tagsRow.querySelectorAll(".tag-pill")).map(el => el.textContent.replace(/\s*\u00d7\s*$/, "").trim());
   }
 
-  // Save
   function scheduleSave() {
     if (saveTimer) clearTimeout(saveTimer);
     updateSaveStatus("saving");
@@ -726,78 +513,47 @@ html, body {
     saveTimer = null;
     if (!currentPage) return;
     try {
-      const body = {
-        title: titleField.textContent.trim() || "Untitled",
-        content: contentField.value,
-        tags: getCurrentTags(),
-        icon: currentPage.icon || ""
-      };
-      const updated = await api("PUT", "/api/pages/" + currentPage.id, body);
-      currentPage = updated;
+      const body = { title: titleField.textContent.trim() || "Untitled", content: contentField.value, tags: getCurrentTags(), icon: currentPage.icon || "" };
+      currentPage = await api("PUT", "/api/pages/" + currentPage.id, body);
       updateSaveStatus("saved");
-      await loadPages();
-    } catch (e) {
-      console.error("Save error:", e);
-      updateSaveStatus("error");
-    }
+      loadPages();
+    } catch(e) { console.error(e); updateSaveStatus("error"); }
   }
 
   function updateSaveStatus(state) {
     saveStatus.className = "save-status" + (state ? " " + state : "");
-    if (state === "saving") saveStatus.textContent = "Saving...";
-    else if (state === "saved") saveStatus.textContent = "Saved";
-    else if (state === "error") saveStatus.textContent = "Error saving";
-    else saveStatus.textContent = "";
+    saveStatus.textContent = state === "saving" ? "Saving..." : state === "saved" ? "Saved" : state === "error" ? "Error" : "";
   }
 
-  // New page
   async function createPage() {
     try {
-      const page = await api("POST", "/api/pages", {
-        title: "", content: "", tags: [], icon: ""
-      });
+      const page = await api("POST", "/api/pages", { title: "", content: "", tags: [], icon: "" });
       await loadPages();
       await selectPage(page.id);
       titleField.focus();
-    } catch (e) {
-      console.error("Failed to create page:", e);
-    }
+    } catch(e) { console.error(e); }
   }
 
-  // Delete page
   async function deletePage() {
-    if (!currentPage) return;
-    if (!confirm("Delete this page?")) return;
+    if (!currentPage || !confirm("Delete this page?")) return;
     try {
       await api("DELETE", "/api/pages/" + currentPage.id);
-      hideEditor();
+      emptyState.style.display = ""; editorArea.style.display = "none"; currentPage = null;
       await loadPages();
-    } catch (e) {
-      console.error("Failed to delete:", e);
-    }
+    } catch(e) { console.error(e); }
   }
 
-  // Search
   function doSearch() {
     const q = searchInput.value.trim();
-    if (!q) {
-      isSearching = false;
-      renderPageList(pages);
-      return;
-    }
+    if (!q) { isSearching = false; renderPageList(pages); return; }
     isSearching = true;
     if (searchTimer) clearTimeout(searchTimer);
-    searchTimer = setTimeout(async function() {
-      try {
-        const data = await api("GET", "/api/search?q=" + encodeURIComponent(q));
-        renderPageList(data.pages || []);
-      } catch (e) {
-        console.error("Search error:", e);
-      }
+    searchTimer = setTimeout(async () => {
+      try { renderPageList((await api("GET", "/api/search?q=" + encodeURIComponent(q))).pages || []); }
+      catch(e) { console.error(e); }
     }, 300);
   }
 
-  // History
   async function openHistory() {
     if (!currentPage) return;
     selectedOid = null;
@@ -807,137 +563,88 @@ html, body {
     historyList.innerHTML = '<div class="history-empty">Loading...</div>';
     try {
       const commits = await api("GET", "/api/pages/" + currentPage.id + "/history");
-      if (!commits || commits.length === 0) {
-        historyList.innerHTML = '<div class="history-empty">No version history yet</div>';
-        return;
-      }
-      historyList.innerHTML = commits.map(function(c) {
-        var d = new Date(c.timestamp * 1000 || c.timestamp);
-        var timeStr = d.toLocaleString();
-        return '<div class="history-item" data-oid="' + c.oid + '">' +
-          '<div class="history-item-msg">' + escapeHtml(c.message || "Update") + '</div>' +
-          '<div class="history-item-meta">' + escapeHtml(c.author || "") + " &middot; " + timeStr + '</div></div>';
+      if (!commits?.length) { historyList.innerHTML = '<div class="history-empty">No history yet</div>'; return; }
+      historyList.innerHTML = commits.map(c => {
+        const d = new Date(c.timestamp).toLocaleString();
+        return '<div class="history-item" data-oid="' + c.oid + '"><div class="history-item-msg">' + esc(c.message) + '</div><div class="history-item-meta">' + d + '</div></div>';
       }).join("");
-    } catch (e) {
-      historyList.innerHTML = '<div class="history-empty">Failed to load history</div>';
-    }
+    } catch(e) { historyList.innerHTML = '<div class="history-empty">Failed to load</div>'; }
   }
 
-  function closeHistory() {
-    historyOverlay.classList.remove("open");
-    historyPanel.classList.remove("open");
-  }
+  function closeHistory() { historyOverlay.classList.remove("open"); historyPanel.classList.remove("open"); }
 
   async function previewRevision(oid) {
     if (!currentPage) return;
     selectedOid = oid;
-    // Highlight active
-    historyList.querySelectorAll(".history-item").forEach(function(el) {
-      el.classList.toggle("active", el.dataset.oid === oid);
-    });
+    historyList.querySelectorAll(".history-item").forEach(el => el.classList.toggle("active", el.dataset.oid === oid));
     try {
       const rev = await api("GET", "/api/pages/" + currentPage.id + "/revisions/" + oid);
       historyPreviewContent.textContent = (rev.title || "Untitled") + "\n\n" + (rev.content || "");
       historyPreview.classList.add("visible");
-    } catch (e) {
-      historyPreviewContent.textContent = "Failed to load revision";
-      historyPreview.classList.add("visible");
-    }
+    } catch(e) { historyPreviewContent.textContent = "Failed to load"; historyPreview.classList.add("visible"); }
   }
 
   async function restoreRevision() {
     if (!currentPage || !selectedOid) return;
     try {
       await api("POST", "/api/pages/" + currentPage.id + "/restore/" + selectedOid);
-      closeHistory();
-      await selectPage(currentPage.id);
-      await loadPages();
-    } catch (e) {
-      console.error("Restore failed:", e);
-    }
+      closeHistory(); await selectPage(currentPage.id); loadPages();
+    } catch(e) { console.error(e); }
   }
 
-  // Mobile sidebar
-  function closeSidebar() {
-    if (window.innerWidth <= 768) sidebar.classList.remove("open");
+  function openSidebar() { sidebar.classList.add("open"); sidebarBackdrop.classList.add("open"); }
+  function closeSidebar() { sidebar.classList.remove("open"); sidebarBackdrop.classList.remove("open"); }
+
+  function autoGrow() {
+    contentField.style.height = "auto";
+    contentField.style.height = Math.max(200, contentField.scrollHeight) + "px";
   }
 
   // Events
-  pageList.addEventListener("click", function(e) {
-    var item = e.target.closest(".page-item");
-    if (item) selectPage(item.dataset.id);
-  });
-
+  pageList.addEventListener("click", e => { const item = e.target.closest(".page-item"); if (item) selectPage(item.dataset.id); });
   newPageBtn.addEventListener("click", createPage);
+  fabBtn.addEventListener("click", createPage);
   deleteBtn.addEventListener("click", deletePage);
   searchInput.addEventListener("input", doSearch);
-
   titleField.addEventListener("input", scheduleSave);
-  contentField.addEventListener("input", function() {
-    // Auto-grow textarea
-    contentField.style.height = "auto";
-    contentField.style.height = Math.max(400, contentField.scrollHeight) + "px";
-    scheduleSave();
-  });
+  contentField.addEventListener("input", () => { autoGrow(); scheduleSave(); });
 
-  tagInput.addEventListener("keydown", function(e) {
+  tagInput.addEventListener("keydown", e => {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
-      var val = tagInput.value.trim().replace(/,$/, "");
-      if (val) {
-        var tags = getCurrentTags();
-        if (tags.indexOf(val) === -1) {
-          tags.push(val);
-          renderTags(tags);
-          scheduleSave();
-        }
-      }
+      const val = tagInput.value.trim().replace(/,$/, "");
+      if (val) { const tags = getCurrentTags(); if (!tags.includes(val)) { tags.push(val); renderTags(tags); scheduleSave(); } }
       tagInput.value = "";
     }
     if (e.key === "Backspace" && !tagInput.value) {
-      var pills = tagsRow.querySelectorAll(".tag-pill");
-      if (pills.length) {
-        pills[pills.length - 1].remove();
-        scheduleSave();
-      }
+      const pills = tagsRow.querySelectorAll(".tag-pill");
+      if (pills.length) { pills[pills.length - 1].remove(); scheduleSave(); }
     }
   });
 
-  tagsRow.addEventListener("click", function(e) {
-    if (e.target.classList.contains("tag-remove")) {
-      e.target.parentElement.remove();
-      scheduleSave();
-    }
-  });
-
+  tagsRow.addEventListener("click", e => { if (e.target.classList.contains("tag-remove")) { e.target.parentElement.remove(); scheduleSave(); } });
   historyBtn.addEventListener("click", openHistory);
   historyClose.addEventListener("click", closeHistory);
   historyOverlay.addEventListener("click", closeHistory);
-
-  historyList.addEventListener("click", function(e) {
-    var item = e.target.closest(".history-item");
-    if (item) previewRevision(item.dataset.oid);
-  });
-
+  historyList.addEventListener("click", e => { const item = e.target.closest(".history-item"); if (item) previewRevision(item.dataset.oid); });
   restoreBtn.addEventListener("click", restoreRevision);
+  mobileToggle.addEventListener("click", openSidebar);
+  sidebarBackdrop.addEventListener("click", closeSidebar);
 
-  mobileToggle.addEventListener("click", function() {
-    sidebar.classList.toggle("open");
+  document.addEventListener("keydown", e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "n") { e.preventDefault(); createPage(); }
+    if (e.key === "Escape") { closeHistory(); closeSidebar(); }
   });
 
-  // Keyboard shortcuts
-  document.addEventListener("keydown", function(e) {
-    if ((e.metaKey || e.ctrlKey) && e.key === "n") {
-      e.preventDefault();
-      createPage();
-    }
-    if (e.key === "Escape") {
-      closeHistory();
-      closeSidebar();
-    }
-  });
+  // Swipe to open sidebar
+  let touchStartX = 0;
+  document.addEventListener("touchstart", e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener("touchend", e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (touchStartX < 30 && dx > 80) openSidebar();
+    if (sidebar.classList.contains("open") && dx < -80) closeSidebar();
+  }, { passive: true });
 
-  // Init
   loadPages();
 })();
 </script>
